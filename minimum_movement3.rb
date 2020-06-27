@@ -1,29 +1,41 @@
+# frozen_string_literal: true
+
 require 'byebug'
 class MinimumMovementService
   LEFT_LANE = 1
   MIDDLE_LANE = 2
   RIGHT_LANE = 3
 
-  def initialize(obstacleLanes, starting_lane = MIDDLE_LANE)
-    @obstacleLanes = obstacleLanes
+  def initialize(obstacle_lanes, starting_lane = MIDDLE_LANE)
+    @obstacle_lanes = obstacle_lanes
     @car_lane = starting_lane
+    @movements = 0
   end
 
   def call
-    movements = 0
-    index = 0
-    while index < @obstacleLanes.size
-      obstacle = @obstacleLanes[index]
-      if obstacle == @car_lane
-        movements += 1
-        next_obstacles = @obstacleLanes.slice(index + 1..-1)
-        break if next_obstacles.empty?
-        next_lane_index = find_next_lane_index(next_obstacles)
-        index += next_lane_index.positive? ? next_lane_index : 0
+    initiate_car_movements
+    @movements
+  end
+
+  def initiate_car_movements(index = 0)
+    while index < @obstacle_lanes.size
+      obstacle = @obstacle_lanes[index]
+      begin
+        index += obstacle_in_same_lane(index) if obstacle == @car_lane
+      rescue EndOfLaneError
+        break
       end
       index += 1
     end
-    movements
+  end
+
+  def obstacle_in_same_lane(index)
+    @movements += 1
+    next_obstacles = @obstacle_lanes.slice(index + 1..-1)
+    raise EndOfLaneError, 'EndOfLaneError' if next_obstacles.empty?
+
+    next_lane_index = find_next_lane_index(next_obstacles)
+    next_lane_index.positive? ? next_lane_index : 0
   end
 
   def find_next_lane_index(next_obstacles)
@@ -43,7 +55,13 @@ class MinimumMovementService
     if !index_lane1 || !index_lane2 # no more obstacles in lanes
       @car_lane = !index_lane1 ? lane1 : lane2
       next_obstacles.size
-    elsif index_lane1 >= index_lane2 # lane 1 last longer
+    else
+      change_lane(lane1, lane2, index_lane1, index_lane2)
+    end
+  end
+
+  def change_lane(lane1, lane2, index_lane1, index_lane2)
+    if index_lane1 >= index_lane2 # lane 1 last longer
       @car_lane = lane1
       index_lane1
     else # lane 1 last longer
@@ -53,10 +71,12 @@ class MinimumMovementService
   end
 end
 
-def minimumMovement(obstacleLanes)
-  MinimumMovementService.new(obstacleLanes).call
+class EndOfLaneError < StandardError; end
+
+def minimumMovement(obstacle_lanes) # rubocop:disable Naming/MethodName
+  MinimumMovementService.new(obstacle_lanes).call
 end
 
-# obstacleLanes = [2, 3, 2, 1, 3, 1]
-obstacleLanes = [2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3]
-puts minimumMovement(obstacleLanes)
+# obstacle_lanes = [2, 3, 2, 1, 3, 1]
+obstacle_lanes = [2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3, 1, 2, 3]
+puts minimumMovement(obstacle_lanes)
