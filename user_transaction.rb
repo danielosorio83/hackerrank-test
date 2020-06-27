@@ -1,28 +1,30 @@
+# frozen_string_literal: true
+
 require 'net/http'
 require 'json'
 require 'time'
 
 class UserTransactionService
-  URL = 'https://jsonmock.hackerrank.com/api/transactions/search'.freeze
+  URL = 'https://jsonmock.hackerrank.com/api/transactions/search'
 
-  def initialize(uid, txnType, monthYear)
+  def initialize(uid, txn_type, month_year)
     @uid = uid
-    @txnType = txnType
-    @monthYear = monthYear
+    @txn_type = txn_type
+    @month_year = month_year
   end
 
   def call
-    transactions = get_valid_transactions
-    debit_transactions = @txnType == 'debit' ? transactions : get_debit_transactions
+    transactions = pull_valid_transactions
+    debit_transactions = @txn_type == 'debit' ? transactions : pull_debit_transactions
     transactions = filter_transaction_by_average(transactions, debit_transactions)
     transactions.empty? ? [-1] : transactions.sort
   end
 
   private
 
-  def get_debit_transactions
-    @txnType = 'debit'
-    get_valid_transactions
+  def pull_debit_transactions
+    @txn_type = 'debit'
+    pull_valid_transactions
   end
 
   def filter_transaction_by_average(transactions, debit_transactions)
@@ -34,7 +36,7 @@ class UserTransactionService
     records
   end
 
-  def get_valid_transactions
+  def pull_valid_transactions
     response = get_uri_from_url
     transactions = filter_response_by_dates(response['data'])
     transactions += pull_other_pages_transactions(response) if response['total_pages'].to_i > 1
@@ -70,17 +72,17 @@ class UserTransactionService
     parameters = {}
     parameters[:page] = page
     parameters[:userId] = @uid if @uid
-    parameters[:txnType] = @txnType if @txnType
+    parameters[:txnType] = @txn_type if @txn_type
     parameters
   end
 
   def start_time
-    month, year = @monthYear.split('-')
+    month, year = @month_year.split('-')
     @start_time ||= Time.parse("01-#{month}-#{year} 00:00:00 UTC").to_i * 1000
   end
 
   def end_time
-    month, year = @monthYear.split('-')
+    month, year = @month_year.split('-')
     month = month.to_i == 12 ? 1 : month.to_i + 1
     year = month.to_i == 12 ? year.to_i + 1 : year
     @end_time ||= (Time.parse("01-#{month}-#{year} 00:00:00 UTC") - 1).to_i * 1000
@@ -91,8 +93,8 @@ class UserTransactionService
   end
 end
 
-puts UserTransactionService.new(3, "credit", "03-2019").call
-# puts UserTransactionService.new(4, "credit", "01-2019").call
-# puts UserTransactionService.new(1, "credit", "05-2019").call
-# puts UserTransactionService.new(2, "credit", "01-2019").call
-# puts UserTransactionService.new(1, "credit", "09-2019").call
+puts UserTransactionService.new(3, 'credit', '03-2019').call
+# puts UserTransactionService.new(4, 'credit', '01-2019').call
+# puts UserTransactionService.new(1, 'credit', '05-2019').call
+# puts UserTransactionService.new(2, 'credit', '01-2019').call
+# puts UserTransactionService.new(1, 'credit', '09-2019').call
